@@ -6,7 +6,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
-#import seaborn as sb
+import seaborn as sns
 
 
 
@@ -118,8 +118,8 @@ write_df(Medals_df.head())
 write_subheader('Hosts DataFrame')
 generic_write('Dataframe cointaining the countries that host the game and their respective game season')
 write_df(Hosts_df.head())
-# print(vendors_products_df.info())
-# print(vendors_products_df.describe().T)
+# print(Hosts_df.info())
+# print(Hosts_df.describe().T)
 #####################
 ## Data Cleaning
 #####################
@@ -128,7 +128,7 @@ Athletes_df['Full_Name'] = Athletes_df['Full_Name'].apply(reformat_name)
 Medals_df = Medals_df.dropna(subset=['Full_Name'])
 Medals_df['Full_Name'] = Medals_df['Full_Name'].apply(reformat_name)
 
-#Merge all the data frames thst sre significant to the Exploratory Data Analysis
+#Merge all the data frames thst are significant to the Exploratory Data Analysis
 Merged_df = pd.merge(Medals_df, Hosts_df[['game_slug','game_year', 'game_season']], 
                      left_on='Slug_Game', right_on='game_slug', 
                      how='left').drop(columns='game_slug')
@@ -142,13 +142,167 @@ Olympics = Olympics.dropna(subset=['Full_Name'])
 
 
 
-# Fill the NaN values of the athlete's birth year ith the median and change the tyoe to int
+# Fill the NaN values of the athlete's birth year with the median and change the type to int
 median_year_birth = Athletes_df['Birth_year'].median()
 Olympics['Birth_year'].fillna(median_year_birth, inplace=True)
 Olympics['Birth_year'] = Olympics['Birth_year'].astype(int)
 
-# Olympics dataframe exploration
-generic_write('So now  we have explored those 3 Data frames above and we will try to see how they can be merged to give a meaningful infromation')
-write_subheader('Olympics')
-generic_write('The whole Dataframe showcasing important features for the exploration and data analysis ')
-write_df(Olympics)
+#Dropped the duplicated rows
+Olympics=Olympics.drop_duplicates()
+
+if st.sidebar.checkbox('Display final datasets'):
+    write_header('Final datasets')
+    generic_write('So now  we have explored those 3 Data frames above and we will try to see how they can be merged to give a meaningful infromation')
+    generic_write('The whole Dataframe showcasing important features for the exploration and data analysis ')
+
+    # Visualize Olympics Dataset
+    write_subheader('Olympics')
+    write_df(Olympics)
+
+    with st.expander('Show activities done'):
+        write_md("- Changed the Birth_year D_type from float to int")
+        write_md("- Fill all NaN values of Birth_year with it's median_year_birth")
+        write_md("- Merged the 3 data frames' columns which are essentil for the analysis")
+        write_md("- Dropped the duplicated rows")
+
+        write_subheader('Athletes_df and Medals_df')
+        write_df(Athletes_df.head(5))
+        write_df(Medals_df.head(5))
+    with st.expander('Show activities done'):
+        write_md("- Called the  function ```Reformat_name``` to the Full_Name column")
+        write_md("- dropped all Nan values of the Full_name column ")
+
+
+#####################
+# Data Visualization
+#####################
+
+write_header('Plots')
+
+# Plotting top 10 countries bty medals
+write_subheader('Top 10 Countries by medals')
+generic_write('What are top 10 countries to won the medals ')
+
+top10=Olympics.Country.value_counts().head(10)
+# Create the plot
+fig, ax = plt.subplots(figsize=(22,10))
+top10.plot(kind="bar", fontsize=15, ax=ax)
+ax.set_title("Top 10 Countries by Medals", fontsize=15)
+ax.set_ylabel("Medals", fontsize=14)
+
+
+# Display the plot 
+st.pyplot(fig) 
+
+generic_write('Split the total medals of Top 10 Countries into Summer / Winter. Are there typical Summer/Winter Games Countries? ')
+# Filter the merged dataframe to include only the top 10 countries by medals
+olympics_10 = Olympics[Olympics.Country.isin(top10.index)]
+
+
+sns.set(font_scale=1.5, palette="dark")
+# Create the figure and the axes
+fig, ax = plt.subplots(figsize=(20, 10))
+# Create the countplot
+ax = sns.countplot(data=olympics_10, x="Country", hue="game_season", order=top10.index)
+# Set the title and labels
+ax.set_title("Top 10 Countries by Medals", fontsize=20)
+# Rotate the x-axis labels
+plt.xticks(rotation=45)
+#  display the figure
+st.pyplot(fig)
+
+generic_write('Split the total medals of Top 10 Countries into Gold, Silver, Bronze.')
+# Set the aesthetic style of the plots
+sns.set(font_scale=1.5, palette="dark")
+# Create the figure and axes for the plot
+fig, ax = plt.subplots(figsize=(20, 10))
+# Create the countplot
+sns.countplot(data=olympics_10, x="Country", hue="Medal", order=top10.index,
+              hue_order=["GOLD", "SILVER", "BRONZE"], palette=["gold", "silver", "brown"], ax=ax)
+# Set the title of the plot
+plt.title("Top 10 Countries by Medals", fontsize=20)
+# Rotate the x-axis labels if needed (optional)
+plt.xticks(rotation=45)
+# Use Streamlit to display the figure
+st.pyplot(fig)
+
+
+
+# Function to create a histogram using Seaborn
+def plot_histogram(data, column, title, xlabel, ylabel, bins=30, color='blue'):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data[column].dropna(), bins=bins, kde=False, color=color)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    return plt
+
+# Calculate the age of athletes by subtracting their birth year from the game year
+Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
+#Display Histogram
+write_subheader('Total Athlete Medals Distribution')
+medals_plot = plot_histogram(Olympics, 'TotalMedals_Won', 'Distribution of Total Medals Won by Athletes', 'Total Medals', 'Number of Athletes')
+st.pyplot(medals_plot)
+
+
+
+write_subheader('Medal Types Distribution ')
+
+
+
+
+write_subheader('Does ```TotalMedals_won``` and ```Game_ParticipationS``` columns have reslation with respect to gender ')
+medals_and_Participations_by_gender = Olympics.groupby('Gender')[['TotalMedals_Won', 'Game_ParticipationS']].sum()
+
+# Create two columns for the layout
+col1, col2 = st.columns(2)
+
+# Use the first column to display the first chart or data
+with col1:
+    write_header("Total Medals Won by Gender")
+    # Assuming you have a plot function or you can use a bar chart directly
+    fig, ax = plt.subplots()
+    medals_and_Participations_by_gender['TotalMedals_Won'].plot(kind='bar', ax=ax)
+    st.pyplot(fig)
+
+# Use the second column to display the second chart or data
+with col2:
+   write_header("Game Participations by Gender")
+   # Assuming you have a plot function or you can use a bar chart directly
+   fig, ax = plt.subplots()
+   medals_and_Participations_by_gender['Game_ParticipationS'].plot(kind='bar', ax=ax)
+   st.pyplot(fig)
+
+
+discipline_counts = Olympics['Descipline'].value_counts()
+
+# Get the top 10 disciplines
+top_disciplines = discipline_counts.head(10).index
+
+# Filter the original DataFrame to only include the top disciplines
+top_disciplines_df = Olympics[Olympics['Descipline'].isin(top_disciplines)]
+
+# Group by 'Discipline' and 'Gender' and count the occurrences
+gender_distribution = top_disciplines_df.groupby(['Descipline', 'Gender']).size().unstack()
+
+# Plot the gender distribution for the top disciplines
+# Create a figure and a set of subplots
+fig, ax = plt.subplots(figsize=(12, 6))
+
+# Plot the data
+gender_distribution.plot(kind='bar', stacked=True, ax=ax)
+
+# Set the title and labels
+ax.set_title('Gender Distribution in Top 10 Disciplines')
+ax.set_xlabel('Discipline')
+ax.set_ylabel('Count')
+ax.legend(title='Gender')
+
+# Rotate the x-axis labels for better readability
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+# Adjust the layout to fit the labels
+plt.tight_layout()
+
+# Show the plot in Streamlit
+st.pyplot(fig)
