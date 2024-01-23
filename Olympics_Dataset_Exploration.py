@@ -146,6 +146,20 @@ Olympics = Olympics.dropna(subset=['Full_Name'])
 median_year_birth = Athletes_df['Birth_year'].median()
 Olympics['Birth_year'].fillna(median_year_birth, inplace=True)
 Olympics['Birth_year'] = Olympics['Birth_year'].astype(int)
+# Calculate the age of athletes by subtracting their birth year from the game year
+Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
+
+upper_age_limit = 65
+lower_age_limit =12
+
+# Replace negative ages and ages above the upper limit with NaN (or a chosen value/strategy)
+Olympics.loc[Olympics['Age'] < lower_age_limit, 'Age'] = None
+Olympics.loc[Olympics['Age'] > upper_age_limit, 'Age'] = None
+
+mean_age = Olympics['Age'].mean()
+
+Olympics['Age'].fillna(mean_age, inplace=True)
+
 
 #Dropped the duplicated rows
 Olympics=Olympics.drop_duplicates()
@@ -237,8 +251,7 @@ def plot_histogram(data, column, title, xlabel, ylabel, bins=30, color='blue'):
     plt.ylabel(ylabel)
     return plt
 
-# Calculate the age of athletes by subtracting their birth year from the game year
-Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
+
 #Display Histogram
 write_subheader('Total Athlete Medals Distribution')
 medals_plot = plot_histogram(Olympics, 'TotalMedals_Won', 'Distribution of Total Medals Won by Athletes', 'Total Medals', 'Number of Athletes')
@@ -246,7 +259,6 @@ st.pyplot(medals_plot)
 
 
 
-write_subheader('Medal Types Distribution ')
 
 
 
@@ -306,3 +318,32 @@ plt.tight_layout()
 
 # Show the plot in Streamlit
 st.pyplot(fig)
+
+
+
+# Calculate the age of athletes by subtracting their birth year from the game year
+Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
+
+
+
+
+
+
+
+
+#####################
+# Machine Learning
+#####################
+
+write_header('Machine Learning application')
+write_md('The main goal is ')
+write_md('The parameters used to classify are: ``````')
+write_md('The algorithm used to classify the data is ``````')
+write_subheader(' dataset')
+
+
+#Feature preprocessing
+
+
+
+
