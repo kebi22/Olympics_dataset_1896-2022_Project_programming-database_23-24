@@ -7,6 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 
 
 
@@ -69,11 +73,11 @@ Medals_df=pd.read_csv('data/olympic_medals.csv.csv')
 write_title("Olympics_ dataset_Exploration")
 generic_write('The project wants to analyze a dataset containing a list of Athelets and countries who participated in both the summer and winter game and won an olympic medal from 1896-2022')
 generic_write('Every champion athelets with their respective countries are listed in the dataset')
-generic_write('The main goal of the project is...')
-generic_write('The  result can be very useful for .... ')
+generic_write('The general goal of the project using Olympic data could be to analyze and understand the historical patterns and trends in the Olympic Games. This includes examining the performance of athletes and countries, the distribution of medals, and other related metrics to gain insights into the factors that contribute to Olympic success. ')
+generic_write('The insights derived from this analysis could then be used to inform future decisions by athletes, coaches, sports organizations, and even policy-makers involved in the Olympic movement. ')
 write_md('**Source dataset**:')
 write_text('https://www.kaggle.com/datasets/piterfm/olympic-games-medals-19862018')
-write_md('For more information read ```README.md``` file')
+
 
 st.sidebar.write('Settings')
 write_md('> Use the **sidebar menu** to show advanced features')
@@ -82,20 +86,6 @@ write_md('> Use the **sidebar menu** to show advanced features')
 ## Data Exploration
 #####################
 write_header('Data Exploration')
-
-#####################
-
-# Add expander to hide column information if not necessary
-#'''with st.expander('Show column description'):
- #   for col in cve_df.columns:
-  #      write_md(f"- ```{col.upper()}```: {cd.get_column_description('cve',col)}") # Using the external file to get column description
-
-
-# print(cve_df.info())
-# print(.describe().T)'''
-
-
-
 
 #####################
 # Athletes dataframe exploration
@@ -123,7 +113,7 @@ write_df(Hosts_df.head())
 #####################
 ## Data Cleaning
 #####################
-# Apply the function to the Full_Name column
+# Apply the function 'reformat_name' to the Full_Name column
 Athletes_df['Full_Name'] = Athletes_df['Full_Name'].apply(reformat_name)
 Medals_df = Medals_df.dropna(subset=['Full_Name'])
 Medals_df['Full_Name'] = Medals_df['Full_Name'].apply(reformat_name)
@@ -177,6 +167,7 @@ if st.sidebar.checkbox('Display final datasets'):
         write_md("- Changed the Birth_year D_type from float to int")
         write_md("- Fill all NaN values of Birth_year with it's median_year_birth")
         write_md("- Merged the 3 data frames' columns which are essentil for the analysis")
+        write_md("-Added an new column called ```Age```")
         write_md("- Dropped the duplicated rows")
 
         write_subheader('Athletes_df and Medals_df')
@@ -193,7 +184,7 @@ if st.sidebar.checkbox('Display final datasets'):
 
 write_header('Plots')
 
-# Plotting top 10 countries bty medals
+# Plotting top 10 countries by medals
 write_subheader('Top 10 Countries by medals')
 generic_write('What are top 10 countries to won the medals ')
 
@@ -203,8 +194,6 @@ fig, ax = plt.subplots(figsize=(22,10))
 top10.plot(kind="bar", fontsize=15, ax=ax)
 ax.set_title("Top 10 Countries by Medals", fontsize=15)
 ax.set_ylabel("Medals", fontsize=14)
-
-
 # Display the plot 
 st.pyplot(fig) 
 
@@ -214,19 +203,18 @@ olympics_10 = Olympics[Olympics.Country.isin(top10.index)]
 
 
 sns.set(font_scale=1.5, palette="dark")
-# Create the figure and the axes
 fig, ax = plt.subplots(figsize=(20, 10))
 # Create the countplot
 ax = sns.countplot(data=olympics_10, x="Country", hue="game_season", order=top10.index)
-# Set the title and labels
 ax.set_title("Top 10 Countries by Medals", fontsize=20)
 # Rotate the x-axis labels
 plt.xticks(rotation=45)
 #  display the figure
 st.pyplot(fig)
 
+#################################################
+#Second plot
 generic_write('Split the total medals of Top 10 Countries into Gold, Silver, Bronze.')
-# Set the aesthetic style of the plots
 sns.set(font_scale=1.5, palette="dark")
 # Create the figure and axes for the plot
 fig, ax = plt.subplots(figsize=(20, 10))
@@ -250,20 +238,14 @@ def plot_histogram(data, column, title, xlabel, ylabel, bins=30, color='blue'):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     return plt
-
-
 #Display Histogram
 write_subheader('Total Athlete Medals Distribution')
 medals_plot = plot_histogram(Olympics, 'TotalMedals_Won', 'Distribution of Total Medals Won by Athletes', 'Total Medals', 'Number of Athletes')
 st.pyplot(medals_plot)
 
 
-
-
-
-
-
-write_subheader('Does ```TotalMedals_won``` and ```Game_ParticipationS``` columns have reslation with respect to gender ')
+#Show dome relations among columns
+write_subheader('Does ```TotalMedals_won``` and ```Game_ParticipationS``` columns have relation with respect to gender ')
 medals_and_Participations_by_gender = Olympics.groupby('Gender')[['TotalMedals_Won', 'Game_ParticipationS']].sum()
 
 # Create two columns for the layout
@@ -285,6 +267,7 @@ with col2:
    medals_and_Participations_by_gender['Game_ParticipationS'].plot(kind='bar', ax=ax)
    st.pyplot(fig)
 
+########################################
 
 discipline_counts = Olympics['Descipline'].value_counts()
 
@@ -321,10 +304,6 @@ st.pyplot(fig)
 
 
 
-# Calculate the age of athletes by subtracting their birth year from the game year
-Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
-
-
 
 
 
@@ -334,16 +313,88 @@ Olympics['Age']=Olympics['game_year']-Olympics['Birth_year']
 #####################
 # Machine Learning
 #####################
-
-write_header('Machine Learning application')
-write_md('The main goal is ')
-write_md('The parameters used to classify are: ``````')
-write_md('The algorithm used to classify the data is ``````')
-write_subheader(' dataset')
-
-
-#Feature preprocessing
+if st.sidebar.checkbox('Machine learning Model'):
+    write_header('Machine Learning application')
+    write_md('The main goal is to predict thenumber of Game_ParticipationS an athelete has paricipated' )
+    write_md('The parameters used to classify are: ```Country```,```Medal```,```Age```,```TotalMedals_Won``` And ```Gender```')
+    write_md('The algorithm used to classify the data is ```Random_Forest_regressor```')
 
 
 
+    #Feature preprocessing
 
+    #Target encoding is a technique where you replace a categorical 
+    #value with the mean of the target variable for that category.
+
+    #initializing catagoriical features and group the by the mean of my target variable 
+    df_num=Olympics
+    var = Olympics['Country']
+    var2=Olympics['Medal']
+    var3=Olympics['Gender']
+    ordered_labels = Olympics.groupby(var)['Game_ParticipationS'].mean().sort_values().index
+    ordered_labels2 = Olympics.groupby(var2)['Game_ParticipationS'].mean().sort_values().index
+    ordered_labels3 = Olympics.groupby(var3)['Game_ParticipationS'].mean().sort_values().index
+    #catagoriical features are being encoded 
+    Country_ordinal_label = {k: i for i, k in enumerate(ordered_labels, 0)}
+    Country_ordinal_label2 = {k: i for i, k in enumerate(ordered_labels2, 0)}
+    Country_ordinal_label3 = {k: i for i, k in enumerate(ordered_labels3, 0)}
+    #Assigning the numerical values to the columns
+    df_num['Country'] = Olympics['Country'].map(Country_ordinal_label)
+    df_num['Medal'] = Olympics['Medal'].map(Country_ordinal_label2)
+    df_num['Gender'] = Olympics['Gender'].map(Country_ordinal_label3)
+    df_num.dropna(subset='TotalMedals_Won',inplace=True)
+    #FeatureSelection
+    X = df_num[['game_year', 'Gender', 'TotalMedals_Won', 'Age','Country','Medal']]
+    #Target_Variable
+    y = df_num['Game_ParticipationS']
+
+    # Display the dataset
+    write_subheader('dataset')
+    generic_write(df_num.head())
+
+    write_header('Set Parameters')
+    test_size = st.slider('Test set proportion', 0.1, 0.5, 0.2)
+
+    # Splitting the data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+
+    #Normalizing the traning data
+    scaler = StandardScaler()
+    # Fit the scaler to the training data and transform it.
+    X_train = scaler.fit_transform(X_train)
+    # Use the same scaler to transform the test data.
+    # This ensures that the test data is scaled in the same way as the training data.
+    X_test = scaler.transform(X_test)
+    #Funciton to train the model
+    def train_model(X_train, y_train):
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X_train, y_train)
+        return model
+
+    # Function to evaluate the model
+    def evaluate_model(model, X_test, y_test):
+        predictions = model.predict(X_test)
+        mse = mean_squared_error(y_test, predictions)
+        return mse
+
+    # Train the model
+    if st.button('Train Model'):
+            model = train_model(X_train, y_train)
+            mse = evaluate_model(model, X_test, y_test)
+
+            write_subheader('Model Performance')
+            st.write('Mean Squared Error:', mse)
+            #  can also show feature importances or other model insights
+            write_subheader('Feature Importances')
+            importances = pd.Series(model.feature_importances_, index=X.columns)
+            st.bar_chart(importances)
+    if st.sidebar.checkbox('Show Corrrelation map'):
+            write_subheader(' Corrrelation map')
+            generic_write('We can also see the correlation between our target variable and features ')
+            T= df_num[['game_year','Gender','TotalMedals_Won', 'Country','Age','Medal','Game_ParticipationS']]
+            corr_matrix = T.corr()
+            plt.figure(figsize=(10, 8))
+            sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', square=True, linewidths=.5, cbar_kws={"shrink": .5})
+            plt.xticks(rotation=45, ha='right')
+            plt.yticks(rotation=0)
+            st.pyplot(plt)
