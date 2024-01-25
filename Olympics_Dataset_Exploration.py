@@ -315,9 +315,9 @@ st.pyplot(fig)
 #####################
 if st.sidebar.checkbox('Machine learning Model'):
     write_header('Machine Learning application')
-    write_md('The main goal is to predict thenumber of Game_ParticipationS an athelete has paricipated' )
-    write_md('The parameters used to classify are: ```Country```,```Medal```,```Age```,```TotalMedals_Won``` And ```Gender```')
-    write_md('The algorithm used to classify the data is ```Random_Forest_regressor```')
+    write_md('The main goal is to predict the number of Game_ParticipationS an athelete has participated' )
+    write_md('The parameters used to predict are: ```Country```,```Medal```,```Age```,```TotalMedals_Won``` And ```Gender```')
+    write_md('The model used to predict the data is ```Random_Forest_regressor```')
 
 
 
@@ -384,13 +384,14 @@ if st.sidebar.checkbox('Machine learning Model'):
 
             write_subheader('Model Performance')
             st.write('Mean Squared Error:', mse)
-            #  can also show feature importances or other model insights
+            #  can also show feature importances fr other model insights
             write_subheader('Feature Importances')
             importances = pd.Series(model.feature_importances_, index=X.columns)
             st.bar_chart(importances)
     if st.sidebar.checkbox('Show Corrrelation map'):
             write_subheader(' Corrrelation map')
             generic_write('We can also see the correlation between our target variable and features ')
+            #Integrate the whole features and target variables
             T= df_num[['game_year','Gender','TotalMedals_Won', 'Country','Age','Medal','Game_ParticipationS']]
             corr_matrix = T.corr()
             plt.figure(figsize=(10, 8))
